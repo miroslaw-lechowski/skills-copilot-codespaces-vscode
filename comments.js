@@ -1,74 +1,31 @@
 // Create web server with express
+// Create route to get all comments
+// Create route to get comments by id
+// Create route to add comment
+// Create route to update comment
+// Create route to delete comment
+// Export router
+
 const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const { randomBytes } = require('crypto');
-const axios = require('axios');
+const router = express.Router();
+const Comment = require('../models/Comment');
 
-// Create an express app
-const app = express();
-
-// Use cors
-app.use(cors());
-// Use body-parser
-app.use(bodyParser.json());
-
-// Create comments object
-const commentsByPostId = {};
-
-// Create get route
-app.get('/posts/:id/comments', (req, res) => {
-  // Send commentsByPostId object
-  res.send(commentsByPostId[req.params.id] || []);
+// GET ALL COMMENTS
+router.get('/', async (req, res) => {
+    try {
+        const comments = await Comment.find();
+        res.json(comments);
+    } catch (err) {
+        res.json({ message: err });
+    }
 });
 
-// Create post route
-app.post('/posts/:id/comments', async (req, res) => {
-  // Create id
-  const commentId = randomBytes(4).toString('hex');
-
-  // Get content from request body
-  const { content } = req.body;
-
-  // Get comments from commentsByPostId object
-  const comments = commentsByPostId[req.params.id] || [];
-
-  // Push new comment to comments array
-  comments.push({ id: commentId, content, status: 'pending' });
-
-  // Set comments object
-  commentsByPostId[req.params.id] = comments;
-
-  // Send comment object
-  await axios.post('http://localhost:4005/events', {
-    type: 'CommentCreated',
-    data: { id: commentId, content, postId: req.params.id, status: 'pending' },
-  });
-
-  // Send comments array
-  res.status(201).send(comments);
+// GET COMMENT BY ID
+router.get('/:commentId', async (req, res) => {
+    try {
+        const comment = await Comment.findById(req.params.commentId);
+        res.json(comment);
+    } catch (err) {
+        res.json({ message: err });
+    }
 });
-
-// Create post route
-app.post('/events', async (req, res) => {
-  // Get type and data from request body
-  const { type, data } = req.body;
-
-  // Check type
-  if (type === 'CommentModerated') {
-    // Get comment from commentsByPostId object
-    const { id, postId, status, content } = data;
-
-    // Get comments from commentsByPostId object
-    const comments = commentsByPostId[postId];
-
-    // Get comment from comments array
-    const comment = comments.find((comment) => comment.id === id);
-
-    // Set status
-    comment.status = status;
-
-    // Send comment object
-    await axios.post('http://localhost:4005/events', {
-      type: 'CommentUpdated',
-      data: { id, postId, status, content
